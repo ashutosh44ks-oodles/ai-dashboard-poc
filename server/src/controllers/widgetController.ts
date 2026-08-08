@@ -81,10 +81,10 @@ export const updateWidget = async (
   res: Response
 ): Promise<void> => {
   try {
-    const { widgetId, sql_query, content }: {
-      widgetId: Widget["id"];
-      sql_query: Widget["sql_query"];
-      content: Widget["content"];
+    const widgetId = req.params.id;
+    const { sql_query, content }: {
+      sql_query?: Widget["sql_query"];
+      content?: Widget["content"];
     } = req.body;
     const USER_ID = req.USER_ID;
 
@@ -115,7 +115,12 @@ export const updateWidget = async (
       return;
     }
 
-    const updatedWidget = await widgetService.updateWidget(widgetId, sql_query, content, USER_ID);
+    const updatedWidget = await widgetService.updateWidget(
+      widgetId,
+      sql_query ?? null,
+      content ?? null,
+      USER_ID
+    );
     const response: ApiResponse<Widget> = {
       success: true,
       data: updatedWidget,

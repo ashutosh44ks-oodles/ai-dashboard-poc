@@ -12,6 +12,29 @@ const createWidget = async (widgetPrompt: Widget["prompt"]) => {
   return response.data;
 };
 
+const updateWidget = async (
+  widgetId: Widget["id"],
+  data: { sql_query: string; content: string }
+) => {
+  const response = await api.put(`/widgets/${widgetId}`, data);
+  return response.data;
+};
+
+const saveChatWidgetToDashboard = async ({
+  prompt,
+  sqlQuery,
+  content,
+}: {
+  prompt: string;
+  sqlQuery: string;
+  content: string;
+}) => {
+  const created = await createWidget(prompt);
+  const widgetId = created.data?.id;
+  if (!widgetId) throw new Error("Failed to create widget");
+  return updateWidget(widgetId, { sql_query: sqlQuery, content });
+};
+
 const deleteWidget = async (widgetId: Widget["id"]) => {
   const response = await api.delete(`/widgets/${widgetId}`);
   return response.data;
@@ -68,6 +91,8 @@ async function* generateUIForWidget(
 export default {
   getAllWidgets,
   createWidget,
+  updateWidget,
+  saveChatWidgetToDashboard,
   deleteWidget,
   generateUIForWidget,
 };

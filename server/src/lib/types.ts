@@ -38,13 +38,21 @@ export interface QueryForPrompt {
   error?: string;
 }
 
+export interface ChatQueryForPrompt {
+  /** Legacy write-query field */
+  query?: string | null;
+  write_query?: string | null;
+  read_query?: string | null;
+  missing_info_message?: string | null;
+  query_success_message?: string | null;
+  refusal_message?: string | null;
+  chart_display?: "none" | "suggest" | "show" | null;
+  chart_suggestion_message?: string | null;
+}
+
 export interface QueryForPromptWithMissingInfo {
   success: boolean;
-  data?: {
-    query: string | null;
-    missing_info_message: string | null;
-    query_success_message: string | null;
-  };
+  data?: ChatQueryForPrompt;
   error?: string;
 }
 

@@ -149,3 +149,115 @@ export function removeJsonCodeBlock(input: string): string {
   // If the markers are not present, return the original string
   return input;
 }
+
+const CHITCHAT_PROMPTS = new Set([
+  "hi",
+  "hello",
+  "hey",
+  "how are you",
+  "hi how are you",
+  "good morning",
+  "good evening",
+  "good afternoon",
+  "thanks",
+  "thank you",
+  "ok",
+  "okay",
+]);
+
+export function isChitchatPrompt(prompt: string): boolean {
+  const normalized = prompt.trim().toLowerCase().replace(/[!?.,\n]+$/g, "");
+  return CHITCHAT_PROMPTS.has(normalized);
+}
+
+export function formatQueryResultsForChat(
+  rows: Record<string, unknown>[]
+): string {
+  if (!rows.length) {
+    return "The query returned no rows.";
+  }
+  if (rows.length === 1) {
+    const entries = Object.entries(rows[0]);
+    if (entries.length === 1) {
+      const [key, value] = entries[0];
+      return `${keyToLabel(key)}: ${String(value)}`;
+    }
+    return entries
+      .map(([key, value]) => `${keyToLabel(key)}: ${String(value)}`)
+      .join(", ");
+  }
+  return `Found ${rows.length} row(s):\n${JSON.stringify(rows, null, 2)}`;
+}
+
+export type ChartDisplay = "none" | "suggest" | "show";
+
+const EXPLICIT_CHART_PATTERN =
+  /\b(chart|graph|visuali[sz]e|plot|diagram)\b|(?:\bshow\b.*\b(bar|pie|line|area)\b)/i;
+
+export function isExplicitChartRequest(prompt: string): boolean {
+  return EXPLICIT_CHART_PATTERN.test(prompt);
+}
+
+function isNumericValue(value: unknown): boolean {
+  if (typeof value === "number") return !Number.isNaN(value);
+  if (typeof value === "string" && value.trim() !== "") {
+    return !Number.isNaN(Number(value));
+  }
+  return false;
+}
+
+export function isChartEligibleRows(rows: Record<string, unknown>[]): boolean {
+  if (!rows.length) return false;
+
+  const countNumeric = (row: Record<string, unknown>) =>
+    Object.values(row).filter(isNumericValue).length;
+
+  if (rows.length === 1) {
+    const entries = Object.entries(rows[0]);
+    const numericCount = countNumeric(rows[0]);
+    if (numericCount >= 2) return true;
+    if (entries.length === 1 && numericCount === 1) return false;
+    return numericCount >= 1 && entries.length >= 2;
+  }
+
+  return rows.some((row) => countNumeric(row) > 0);
+}
+
+export function resolveChartDisplay(
+  prompt: string,
+  llmChartDisplay: string | null | undefined,
+  llmSuggestionMessage: string | null | undefined,
+  rows: Record<string, unknown>[]
+): { display: ChartDisplay; suggestionMessage?: string } {
+  const eligible = isChartEligibleRows(rows);
+  if (!eligible) {
+    return { display: "none" };
+  }
+
+  if (isExplicitChartRequest(prompt)) {
+    return { display: "show" };
+  }
+
+  const llm = llmChartDisplay?.toLowerCase();
+  if (llm === "show") {
+    return { display: "show" };
+  }
+  if (llm === "none") {
+    return { display: "none" };
+  }
+  if (llm === "suggest") {
+    return {
+      display: "suggest",
+      suggestionMessage:
+        llmSuggestionMessage?.trim() ||
+        "This result could be easier to scan as a chart.",
+    };
+  }
+
+  return {
+    display: "suggest",
+    suggestionMessage:
+      llmSuggestionMessage?.trim() ||
+      "This result could be easier to scan as a chart.",
+  };
+}

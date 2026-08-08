@@ -2,6 +2,7 @@ import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import DataModelService from "@/services/dataModels";
 import InputWithAttachment from "@/components/InputWithAttachment";
+import { ChatWidgetPreview } from "@/components/chat-widget-preview";
 import type { ChatMessage } from "@/lib/types";
 import { scrollToBottom } from "@/lib/utils";
 import { useDataModelConversation } from "@/hooks/useDataModelConversation";
@@ -48,7 +49,10 @@ const DataModel = () => {
     //   }
     // }
     // mutate(formData);
-    mutate({ prompt: inputRef.value, history: messages });
+    mutate({
+      prompt: inputRef.value,
+      history: messages.map(({ role, content }) => ({ role, content })),
+    });
   };
 
   const { user } = useLoggedInUser();
@@ -86,7 +90,17 @@ const DataModel = () => {
         <div className="flex-1 space-y-2 w-full">
           {messages.map((msg, index) => (
             <AIMessage key={index} from={msg.role}>
-              <AIMessageContent>{msg.content}</AIMessageContent>
+              <AIMessageContent>
+                <p>{msg.content}</p>
+                {msg.widget && (
+                  <ChatWidgetPreview
+                    prompt={msg.widget.prompt}
+                    sqlQuery={msg.widget.sqlQuery}
+                    display={msg.widget.display}
+                    suggestionMessage={msg.widget.suggestionMessage}
+                  />
+                )}
+              </AIMessageContent>
               <AIMessageAvatar
                 src="/avatars/shadcn.jpg"
                 name={

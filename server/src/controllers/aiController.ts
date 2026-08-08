@@ -4,6 +4,7 @@ import * as openaiService from "../services/openAIService.js";
 import * as widgetService from "../services/widgetService.js";
 import { ApiResponse, DataForPrompt, Message } from "../lib/types.js";
 import {
+  validateGeneratedSQLQueryForReadOperations,
   validateGeneratedSQLQueryForUpdateOperations,
   validatePromptForReadOperations,
   validatePromptForUpdateOperations,
@@ -131,6 +132,85 @@ ${JSON.stringify(rows, null, 2)}`;
       error: "Internal server error",
     });
     return;
+  }
+};
+
+export const previewWidget = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const { prompt, sqlQuery } = req.body;
+    const USER_ID = req.USER_ID;
+
+    if (!USER_ID) {
+      res.status(400).json({
+        success: false,
+        error: "User ID is required",
+      });
+      return;
+    }
+
+    if (!prompt || !sqlQuery) {
+      res.status(400).json({
+        success: false,
+        error: "prompt and sqlQuery are required",
+      });
+      return;
+    }
+
+    const validationResult =
+      validateGeneratedSQLQueryForReadOperations(sqlQuery);
+    if (!validationResult.isValid) {
+      res.status(400).json({
+        success: false,
+        error: validationResult.error || "Invalid SQL query",
+      });
+      return;
+    }
+
+    const dataForPrompt = await openaiService.executePromptQuery(sqlQuery);
+    if (!dataForPrompt.success) {
+      res.status(400).json({
+        success: false,
+        error: dataForPrompt.error || "Failed to execute SQL query",
+      });
+      return;
+    }
+
+    const rows = dataForPrompt.data;
+    if (!Array.isArray(rows) || rows.length === 0) {
+      res.status(400).json({
+        success: false,
+        error: "Query returned no data to visualize",
+      });
+      return;
+    }
+
+    logger.info(
+      `Previewing widget for prompt with ${rows.length} row(s)`
+    );
+
+    const llmStream = await openaiService.streamWidgetUIFromRows(prompt, rows);
+
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+
+    const encoder = new TextEncoder();
+    for await (const chunk of llmStream) {
+      const text = chunk.choices[0]?.delta?.content ?? "";
+      if (!text) continue;
+      res.write(encoder.encode(text));
+    }
+
+    res.end();
+  } catch (error) {
+    logger.error(`Error in preview widget: ${error}`);
+    res.status(500).json({
+      success: false,
+      error: "Internal server error",
+    });
   }
 };
 
@@ -288,10 +368,28 @@ export const bulkSaveRecords = async (
     }
     let newHistory: Message[] = history || [];
     newHistory.push({ role: "user", content: prompt });
-    newHistory.push({
+
+    const assistantMessage: Message & {
+      widget?: {
+        prompt: string;
+        sqlQuery: string;
+        display: "suggest" | "show";
+        suggestionMessage?: string;
+      };
+    } = {
       role: "assistant",
       content: result.data?.message || "Operation completed successfully",
-    });
+    };
+
+    if (
+      result.data?.type === "read" &&
+      "widget" in result.data &&
+      result.data.widget
+    ) {
+      assistantMessage.widget = result.data.widget;
+    }
+
+    newHistory.push(assistantMessage);
     const response: ApiResponse<unknown> = {
       success: true,
       data: newHistory,

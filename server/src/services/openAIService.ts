@@ -4,6 +4,7 @@ import {
   DATABASE_UPDATE_SYSTEM_PROMPT,
   DATABASE_UPDATE_SYSTEM_PROMPT_RECURSIVE,
   SUMMARIZE_CHAT_SYSTEM_PROMPT,
+  UI_GENERATION_SYSTEM_PROMPT,
 } from "../lib/constants.js";
 import {
   DataForPrompt,
@@ -20,7 +21,7 @@ import { query } from "../config/db.js";
 import logger from "../config/logger.js";
 import * as widgetService from "./widgetService.js";
 import { DatabaseError } from "pg";
-import { multipleQueryHandler, removeJsonCodeBlock } from "../lib/utils.js";
+import { multipleQueryHandler, removeJsonCodeBlock, formatQueryResultsForChat, isChitchatPrompt, resolveChartDisplay } from "../lib/utils.js";
 
 import {
   OPENROUTER_MODEL,
@@ -60,6 +61,30 @@ export async function createStreamingChatCompletion(
 
 export function getOpenRouterClient(): OpenAI {
   return openRouterClient;
+}
+
+export function buildWidgetUIPrompt(
+  prompt: string,
+  rows: Record<string, unknown>[]
+): string {
+  return `User question: ${prompt}
+
+Query results (${rows.length} rows):
+${JSON.stringify(rows, null, 2)}`;
+}
+
+export async function streamWidgetUIFromRows(
+  prompt: string,
+  rows: Record<string, unknown>[]
+) {
+  const messages: Message[] = [
+    UI_GENERATION_SYSTEM_PROMPT,
+    {
+      role: "user",
+      content: buildWidgetUIPrompt(prompt, rows),
+    },
+  ];
+  return await createStreamingChatCompletion(messages);
 }
 
 // Helper function to get SQL query for the prompt
@@ -186,8 +211,14 @@ export const getSQLQueryForPromptRecursively = async (
       try {
         const parsedContent: QueryForPromptWithMissingInfo["data"] =
           JSON.parse(removeJsonCodeBlock(content));
-        console.log("Parsed Content:", parsedContent);
-        if (parsedContent && (parsedContent.query || parsedContent.missing_info_message)) {
+        if (
+          parsedContent &&
+          (parsedContent.write_query ||
+            parsedContent.read_query ||
+            parsedContent.query ||
+            parsedContent.missing_info_message ||
+            parsedContent.refusal_message)
+        ) {
           return {
             success: true,
             data: parsedContent,
@@ -378,6 +409,18 @@ export const handlePromptQueryRecursively = async (
     )}`
   );
 
+  if (isChitchatPrompt(prompt)) {
+    return {
+      success: true,
+      data: {
+        type: "refusal",
+        message:
+          "I can help you query data or add/update records. For example: \"How many customers do we have?\" or \"Add a new double room.\"",
+      },
+      error: null,
+    };
+  }
+
   if (newHistory.length > 5) {
     logger.warn("History length exceeded 5 messages, trimming older messages.");
     const historySummary = await summarizeChatTillNow(newHistory);
@@ -409,54 +452,142 @@ export const handlePromptQueryRecursively = async (
     };
   }
 
-  if (resultForPrompt.data?.missing_info_message) {
+  const parsed = resultForPrompt.data;
+
+  if (parsed?.refusal_message) {
+    return {
+      success: true,
+      data: { type: "refusal", message: parsed.refusal_message },
+      error: null,
+    };
+  }
+
+  const readQuery = parsed?.read_query?.trim() || null;
+  const writeQuery =
+    (parsed?.write_query || parsed?.query)?.trim() || null;
+
+  if (readQuery && writeQuery) {
+    return {
+      success: false,
+      error: "Ambiguous request: both read and write queries were generated.",
+    };
+  }
+
+  if (readQuery) {
+    const validationResult =
+      validateGeneratedSQLQueryForReadOperations(readQuery);
+    if (!validationResult.isValid) {
+      logger.error(`Invalid read SQL query: ${validationResult.error}`);
+      return {
+        success: false,
+        error: validationResult.error || "Invalid SQL query",
+      };
+    }
+
+    const dataForPrompt = await executePromptQuery(readQuery);
+    if (!dataForPrompt.success) {
+      logger.error(`Failed to execute read SQL query: ${dataForPrompt.error}`);
+      return {
+        success: false,
+        error: dataForPrompt.error || "Failed to execute SQL query",
+      };
+    }
+
+    const rows = (dataForPrompt.data || []) as Record<string, unknown>[];
     logger.info(
-      `Missing information: ${resultForPrompt.data.missing_info_message}`
+      `Read query executed successfully, fetched ${rows.length} row(s)`
+    );
+
+    const chartDecision = resolveChartDisplay(
+      prompt,
+      parsed?.chart_display,
+      parsed?.chart_suggestion_message,
+      rows
+    );
+
+    const readData: {
+      type: "read";
+      message: string;
+      widget?: {
+        prompt: string;
+        sqlQuery: string;
+        display: "suggest" | "show";
+        suggestionMessage?: string;
+      };
+    } = {
+      type: "read",
+      message: formatQueryResultsForChat(rows),
+    };
+
+    if (chartDecision.display === "suggest" || chartDecision.display === "show") {
+      readData.widget = {
+        prompt,
+        sqlQuery: readQuery,
+        display: chartDecision.display,
+        suggestionMessage: chartDecision.suggestionMessage,
+      };
+    }
+
+    return {
+      success: true,
+      data: readData,
+      error: null,
+    };
+  }
+
+  if (writeQuery) {
+    const validationResult =
+      validateGeneratedSQLQueryForUpdateOperations(writeQuery);
+    if (!validationResult.isValid) {
+      logger.error(`Invalid write SQL query: ${validationResult.error}`);
+      return {
+        success: false,
+        error: validationResult.error || "Invalid SQL query",
+      };
+    }
+
+    const dataForPrompt = await executePromptQuery(writeQuery);
+    if (!dataForPrompt.success) {
+      logger.error(`Failed to execute write SQL query: ${dataForPrompt.error}`);
+      return {
+        success: false,
+        error: dataForPrompt.error || "Failed to execute SQL query",
+      };
+    }
+
+    logger.info(
+      `Write query executed successfully, affected ${
+        dataForPrompt.data?.length || 0
+      } row(s)`
+    );
+
+    return {
+      success: true,
+      data: {
+        type: "write",
+        message:
+          parsed?.query_success_message || "Changes were applied successfully.",
+      },
+      error: null,
+    };
+  }
+
+  if (parsed?.missing_info_message) {
+    logger.info(
+      `Missing information: ${parsed.missing_info_message}`
     );
     return {
       success: true,
       data: {
         type: "missing_info",
-        message: resultForPrompt.data.missing_info_message,
+        message: parsed.missing_info_message,
       },
       error: null,
     };
   }
-  // Validate the generated SQL query
-  const validationResult = validateGeneratedSQLQueryForUpdateOperations(
-    resultForPrompt.data?.query || ""
-  );
-  if (!validationResult.isValid) {
-    logger.error(`Invalid SQL query: ${validationResult.error}`);
-    return {
-      success: false,
-      error: validationResult.error || "Invalid SQL query",
-    };
-  }
-
-  // Execute the SQL query
-  const dataForPrompt = await executePromptQuery(
-    resultForPrompt.data?.query || ""
-  );
-  if (!dataForPrompt.success) {
-    logger.error(`Failed to execute SQL query: ${dataForPrompt.error}`);
-    return {
-      success: false,
-      error: dataForPrompt.error || "Failed to execute SQL query",
-    };
-  }
-  logger.info(
-    `Executed SQL query successfully, fetched ${
-      dataForPrompt.data?.length || 0
-    } rows of data`
-  );
 
   return {
-    success: true,
-    data: {
-      type: "data",
-      message: resultForPrompt.data?.query_success_message || "Query executed successfully.",
-    },
-    error: null,
+    success: false,
+    error: "No actionable response from the model.",
   };
 };
