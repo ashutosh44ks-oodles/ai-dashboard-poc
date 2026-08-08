@@ -8,6 +8,7 @@ declare global {
       OPENROUTER_BASE_URL: string;
       OPENROUTER_MODEL?: string;
       OPENROUTER_MODEL_ADVANCED?: string;
+      PUBLIC_URL?: string;
       DB_USER: string;
       DB_PASSWORD: string;
       DB_HOST: string;

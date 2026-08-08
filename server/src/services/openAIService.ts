@@ -1,5 +1,4 @@
 import OpenAI from "openai";
-import dotenv from "dotenv";
 import {
   DATABASE_READ_SYSTEM_PROMPT,
   DATABASE_UPDATE_SYSTEM_PROMPT,
@@ -23,26 +22,11 @@ import * as widgetService from "./widgetService.js";
 import { DatabaseError } from "pg";
 import { multipleQueryHandler, removeJsonCodeBlock } from "../lib/utils.js";
 
-dotenv.config();
-
-const OPENROUTER_BASE_URL =
-  process.env.OPENROUTER_BASE_URL ?? "https://openrouter.ai/api/v1";
-// ponytail: openrouter/free rotates free models; override via env for a fixed model
-const OPENROUTER_MODEL =
-  process.env.OPENROUTER_MODEL ?? "openrouter/free";
-const OPENROUTER_MODEL_ADVANCED =
-  process.env.OPENROUTER_MODEL_ADVANCED ?? "cohere/north-mini-code:free";
-
-const openRouterClient = new OpenAI({
-  baseURL: OPENROUTER_BASE_URL,
-  apiKey: process.env.OPENROUTER_API_KEY,
-  defaultHeaders: {
-    "HTTP-Referer": "http://localhost:3000",
-    "X-Title": "AI ERP Dashboard",
-  },
-});
-
-// Core methods
+import {
+  OPENROUTER_MODEL,
+  OPENROUTER_MODEL_ADVANCED,
+  openRouterClient,
+} from "../config/openRouter.js";
 export async function createChatCompletion(
   messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[]
 ) {
