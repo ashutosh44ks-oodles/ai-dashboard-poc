@@ -1,3 +1,4 @@
+import "./config/tls.js";
 import express, { Application, Request, Response } from "express";
 import fs from "fs";
 import dotenv from "dotenv";
