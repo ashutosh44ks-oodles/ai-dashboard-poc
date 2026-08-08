@@ -39,6 +39,7 @@ root/
     - Use the data in `env.d.ts` to create a `.env` file in the `server/` directory.
     - Connect your DB and update `DB_SCHEMA` in `./server/src/lib/constants.ts` with your actual database schema info (for now, we are using the sample database).
     - OpenRouter: set `OPENROUTER_API_KEY`. In production also set `PUBLIC_URL` to your deployed app origin (e.g. `https://app.example.com`).
+    - Optional: set `SETTINGS_ENCRYPTION_KEY` (32-byte hex) to encrypt per-user OpenRouter keys at rest in production.
   - **Sample database:**
     - Follow [server/SAMPLE-DB-SETUP.md](./server/SAMPLE-DB-SETUP.md) to load the hotel booking schema and seed data into PostgreSQL.
   - **Client:**

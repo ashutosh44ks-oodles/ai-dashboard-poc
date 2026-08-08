@@ -93,7 +93,7 @@ ${JSON.stringify(rows, null, 2)}`;
       content: newPrompt,
     });
 
-    const llmStream = await openaiService.createStreamingChatCompletion(messages);
+    const llmStream = await openaiService.createStreamingChatCompletion(messages, USER_ID);
 
     // Serve the response as a Server-Sent Event (SSE)
     res.setHeader("Content-Type", "text/event-stream");
@@ -191,7 +191,7 @@ export const previewWidget = async (
       `Previewing widget for prompt with ${rows.length} row(s)`
     );
 
-    const llmStream = await openaiService.streamWidgetUIFromRows(prompt, rows);
+    const llmStream = await openaiService.streamWidgetUIFromRows(prompt, rows, USER_ID);
 
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
@@ -262,7 +262,7 @@ export const saveRecords = async (
       ? `${promptWithFileData}\n\nUse Table Name: ${tableName}`
       : promptWithFileData;
     const sqlQueryForPrompt =
-      await openaiService.getSQLQueryForPromptWithoutRetry(promptWithTableName);
+      await openaiService.getSQLQueryForPromptWithoutRetry(promptWithTableName, USER_ID);
     if (!sqlQueryForPrompt.success) {
       logger.error(`Failed to generate SQL query: ${sqlQueryForPrompt.error}`);
       res.status(400).json({
@@ -361,7 +361,8 @@ export const bulkSaveRecords = async (
 
     const result = await openaiService.handlePromptQueryRecursively(
       prompt,
-      history
+      history,
+      USER_ID
     );
     if (!result.success) {
       throw new Error(result.error || "Failed to process prompt");

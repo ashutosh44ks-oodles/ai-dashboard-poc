@@ -47,10 +47,32 @@ const createWidgetsTableIfNotExists = async (): Promise<void> => {
   }
 };
 
+const migrateUserAISettingsColumns = async (): Promise<void> => {
+  const columns = [
+    "openrouter_api_key_encrypted TEXT",
+    "openrouter_model VARCHAR(255)",
+    "openrouter_model_advanced VARCHAR(255)",
+    "openrouter_model_ui VARCHAR(255)",
+  ];
+  for (const col of columns) {
+    const [name] = col.split(" ");
+    try {
+      await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS ${col}`);
+    } catch (error) {
+      throw new Error(
+        `Failed to add column ${name}: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
+    }
+  }
+};
+
 export const initializeDatabase = async (): Promise<void> => {
   try {
     await createUsersTableIfNotExists();
     await createWidgetsTableIfNotExists();
+    await migrateUserAISettingsColumns();
   } catch (error) {
     console.error("Error initializing database:", error);
     throw error; // Re-throw to handle it in the calling context

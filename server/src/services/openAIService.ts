@@ -24,25 +24,46 @@ import { DatabaseError } from "pg";
 import { multipleQueryHandler, removeJsonCodeBlock, formatQueryResultsForChat, isChitchatPrompt, resolveChartDisplay } from "../lib/utils.js";
 
 import {
+  resolveUserAIConfig,
+  openRouterClient,
   OPENROUTER_MODEL,
   OPENROUTER_MODEL_ADVANCED,
   OPENROUTER_MODEL_UI,
-  openRouterClient,
 } from "../config/openRouter.js";
+
+async function getAIContext(userId?: string) {
+  if (userId) {
+    return await resolveUserAIConfig(userId);
+  }
+  return {
+    client: openRouterClient,
+    models: {
+      default: OPENROUTER_MODEL,
+      advanced: OPENROUTER_MODEL_ADVANCED,
+      ui: OPENROUTER_MODEL_UI,
+    },
+    usingOwnKey: false,
+  };
+}
+
 export async function createChatCompletion(
-  messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[]
+  messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[],
+  userId?: string
 ) {
-  return await openRouterClient.chat.completions.create({
-    model: OPENROUTER_MODEL,
+  const { client, models } = await getAIContext(userId);
+  return await client.chat.completions.create({
+    model: models.default,
     stream: false,
     messages,
   });
 }
 export async function createChatCompletionAdvanced(
   messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[],
+  userId?: string
 ) {
-  return await openRouterClient.chat.completions.create({
-    model: OPENROUTER_MODEL_ADVANCED,
+  const { client, models } = await getAIContext(userId);
+  return await client.chat.completions.create({
+    model: models.advanced,
     stream: false,
     messages,
   });
@@ -50,9 +71,11 @@ export async function createChatCompletionAdvanced(
 
 export async function createStreamingChatCompletion(
   messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[],
+  userId?: string
 ) {
-  return await openRouterClient.chat.completions.create({
-    model: OPENROUTER_MODEL_UI,
+  const { client, models } = await getAIContext(userId);
+  return await client.chat.completions.create({
+    model: models.ui,
     stream: true,
     temperature: 0.2,
     messages,
@@ -75,7 +98,8 @@ ${JSON.stringify(rows, null, 2)}`;
 
 export async function streamWidgetUIFromRows(
   prompt: string,
-  rows: Record<string, unknown>[]
+  rows: Record<string, unknown>[],
+  userId?: string
 ) {
   const messages: Message[] = [
     UI_GENERATION_SYSTEM_PROMPT,
@@ -84,7 +108,7 @@ export async function streamWidgetUIFromRows(
       content: buildWidgetUIPrompt(prompt, rows),
     },
   ];
-  return await createStreamingChatCompletion(messages);
+  return await createStreamingChatCompletion(messages, userId);
 }
 
 // Helper function to get SQL query for the prompt
@@ -93,7 +117,8 @@ export const getSQLQueryForPrompt = async (
   lastInteraction: {
     error: string | null;
     response: string | null;
-  }
+  },
+  userId?: string
 ): Promise<QueryForPrompt> => {
   const messages: Message[] = [DATABASE_READ_SYSTEM_PROMPT];
   messages.push({
@@ -128,13 +153,12 @@ export const getSQLQueryForPrompt = async (
   // return fakeResponseToSaveTokens as QueryForPrompt;
 
   // create a chat completion via OpenRouter
-  const llm = await createChatCompletion(messages);
+  const llm = await createChatCompletion(messages, userId);
 
   // If the response contains choices, extract the content
   if (llm.choices && llm.choices.length > 0) {
     const content = llm.choices[0].message?.content;
     if (content) {
-      // data: content.split("\n").map((line) => line.trim()).filter(Boolean),
       return {
         success: true,
         data: content,
@@ -142,14 +166,14 @@ export const getSQLQueryForPrompt = async (
     }
   }
 
-  // If no content is returned, return an error
   return {
     success: false,
     error: "Failed to generate query from prompt",
   };
 };
 export const getSQLQueryForPromptWithoutRetry = async (
-  prompt: string
+  prompt: string,
+  userId?: string
 ): Promise<QueryForPrompt> => {
   const messages: Message[] = [DATABASE_UPDATE_SYSTEM_PROMPT];
   messages.push({
@@ -157,25 +181,11 @@ export const getSQLQueryForPromptWithoutRetry = async (
     content: prompt,
   });
 
-  // const fakeResponseToSaveTokens = await new Promise((resolve) => {
-  //   // fake promise to simulate async behavior
-  //   setTimeout(() => {
-  //     resolve({
-  //       success: true,
-  //       data: "SELECT * FROM Students WHERE gpa > 3.0;", // Simulated SQL query
-  //     });
-  //   }, 1000);
-  // });
-  // return fakeResponseToSaveTokens as QueryForPrompt;
+  const llm = await createChatCompletion(messages, userId);
 
-  // create a chat completion via OpenRouter
-  const llm = await createChatCompletion(messages);
-
-  // If the response contains choices, extract the content
   if (llm.choices && llm.choices.length > 0) {
     const content = llm.choices[0].message?.content;
     if (content) {
-      // data: content.split("\n").map((line) => line.trim()).filter(Boolean),
       return {
         success: true,
         data: content,
@@ -183,7 +193,6 @@ export const getSQLQueryForPromptWithoutRetry = async (
     }
   }
 
-  // If no content is returned, return an error
   return {
     success: false,
     error: "Failed to generate query from prompt",
@@ -191,7 +200,8 @@ export const getSQLQueryForPromptWithoutRetry = async (
 };
 export const getSQLQueryForPromptRecursively = async (
   prompt: string,
-  history: Message[]
+  history: Message[],
+  userId?: string
 ): Promise<QueryForPromptWithMissingInfo> => {
   const messages: Message[] = [DATABASE_UPDATE_SYSTEM_PROMPT_RECURSIVE];
   messages.push(...history);
@@ -201,10 +211,8 @@ export const getSQLQueryForPromptRecursively = async (
   });
   logger.info(`Messages for LLM: ${messages.length}`);
 
-  // create a chat completion via OpenRouter
-  const llm = await createChatCompletionAdvanced(messages);
+  const llm = await createChatCompletionAdvanced(messages, userId);
 
-  // If the response contains choices, extract the content
   if (llm.choices && llm.choices.length > 0) {
     const content = llm.choices[0].message?.content;
     if (content) {
@@ -230,7 +238,6 @@ export const getSQLQueryForPromptRecursively = async (
     }
   }
 
-  // If no content is returned, return an error
   return {
     success: false,
     error: "Failed to generate result from prompt",
@@ -294,7 +301,7 @@ export const hydratePromptWithGenerativeQueryData = async (
       sqlQueryForPrompt = await getSQLQueryForPrompt(prompt, {
         error: lastError,
         response: sqlQueryForPrompt?.data || null,
-      });
+      }, userId);
       if (!sqlQueryForPrompt.success) {
         throw new Error(sqlQueryForPrompt.error);
       }
@@ -373,13 +380,12 @@ export const hydratePromptWithLastQueryData = async (
   }
 };
 // Helper function to converse with the user and execute the prompt
-export const summarizeChatTillNow = async (history: Message[]) => {
+export const summarizeChatTillNow = async (history: Message[], userId?: string) => {
   const messages: Message[] = [SUMMARIZE_CHAT_SYSTEM_PROMPT];
   messages.push(...history);
   logger.info(`Messages for LLM: ${messages.length}`);
 
-  // create a chat completion via OpenRouter
-  const llm = await createChatCompletion(messages);
+  const llm = await createChatCompletion(messages, userId);
 
   // If the response contains choices, extract the content
   if (llm.choices && llm.choices.length > 0) {
@@ -400,7 +406,8 @@ export const summarizeChatTillNow = async (history: Message[]) => {
 }
 export const handlePromptQueryRecursively = async (
   prompt: string,
-  history: Message[] = []
+  history: Message[] = [],
+  userId?: string
 ) => {
   let newHistory = [...history];
   logger.info(
@@ -423,7 +430,7 @@ export const handlePromptQueryRecursively = async (
 
   if (newHistory.length > 5) {
     logger.warn("History length exceeded 5 messages, trimming older messages.");
-    const historySummary = await summarizeChatTillNow(newHistory);
+    const historySummary = await summarizeChatTillNow(newHistory, userId);
     if (historySummary.success) {
       newHistory = [
         {
@@ -440,7 +447,8 @@ export const handlePromptQueryRecursively = async (
 
   const resultForPrompt = await getSQLQueryForPromptRecursively(
     prompt,
-    newHistory
+    newHistory,
+    userId
   );
   if (!resultForPrompt.success) {
     logger.error(

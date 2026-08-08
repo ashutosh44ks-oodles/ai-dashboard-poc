@@ -3,6 +3,7 @@ import { ForbiddenWordsDictionary, Message } from "./types.js";
 // Constants
 export const PORT = 3001;
 export const API_PREFIX = "/api";
+export const DEFAULT_OPENROUTER_MODEL = "cohere/north-mini-code:free";
 
 // System Prompts
 export const UI_GENERATION_SYSTEM_PROMPT: Message = {

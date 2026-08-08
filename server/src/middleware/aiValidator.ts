@@ -9,7 +9,11 @@ import { ForbiddenWordsDictionary } from "../lib/types.js";
 import { containsWholeWord } from "../lib/utils.js";
 
 // Prompt Validations
-const validatePromptAgainstDictionary = (prompt: string | undefined, dictionary: ForbiddenWordsDictionary) => {
+const validatePromptAgainstDictionary = (
+  prompt: string | undefined,
+  dictionary: ForbiddenWordsDictionary,
+  minLength = 10
+) => {
   const result = {
     isValid: true,
     error: "",
@@ -21,8 +25,7 @@ const validatePromptAgainstDictionary = (prompt: string | undefined, dictionary:
     result.error = "Prompt cannot be empty.";
     return result;
   }
-  // Basic length check
-  if (prompt.trim().length < 10) {
+  if (minLength > 0 && prompt.trim().length < minLength) {
     result.isValid = false;
     result.error = "Prompt is too short.";
     return result;
@@ -52,7 +55,11 @@ export const validatePromptForReadOperations = (prompt: string | undefined) => {
   return validatePromptAgainstDictionary(prompt, forbiddenWordsForReadOperations);
 };
 export const validatePromptForUpdateOperations = (prompt: string | undefined) => {
-  return validatePromptAgainstDictionary(prompt, forbiddenWordsForUpdateOperations);
+  return validatePromptAgainstDictionary(
+    prompt,
+    forbiddenWordsForUpdateOperations,
+    0
+  );
 };
 
 // SQL Query Validations

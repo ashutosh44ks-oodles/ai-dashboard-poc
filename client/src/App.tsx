@@ -10,6 +10,7 @@ import { AuthProvider } from "./hooks/AuthProvider";
 import { Toaster } from 'sonner';
 import DataModel from "./pages/DataModel";
 import TabularInteraction from "./pages/TabularInteraction";
+import Settings from "./pages/Settings";
 import { DataModelProvider } from "./hooks/DataModelProvider";
 
 const router = createBrowserRouter([
@@ -36,6 +37,10 @@ const router = createBrowserRouter([
       {
         path: "/data-models/:tableName",
         element: <TabularInteraction />,
+      },
+      {
+        path: "/settings",
+        element: <Settings />,
       }
     ],
   },

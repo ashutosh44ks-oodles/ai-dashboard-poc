@@ -4,6 +4,7 @@ import userRoutes from "./userRoutes.js";
 import authRoutes from "./authRoutes.js";
 import widgetRoutes from "./widgetRoutes.js"; 
 import dataModelRoutes from "./dataModelRoutes.js";
+import settingsRoutes from "./settingsRoutes.js";
 import { authMiddleWare } from "../middleware/auth.js";
 
 const router = Router();
@@ -25,5 +26,6 @@ router.use("/ai", aiRoutes);
 router.use("/users", userRoutes);
 router.use("/widgets", widgetRoutes);
 router.use("/data-models", dataModelRoutes);
+router.use("/settings", settingsRoutes);
 
 export default router;

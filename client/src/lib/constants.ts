@@ -43,7 +43,7 @@ export const SIDEBAR_STRUCTURE = {
     {
       title: "Settings",
       id: "settings",
-      url: "#",
+      url: "/settings",
       icon: IconSettings,
     },
     {

@@ -8,6 +8,39 @@ export interface User {
   name: string;
   email: string;
   created_at: Date;
+  openrouter_api_key_encrypted?: string | null;
+  openrouter_model?: string | null;
+  openrouter_model_advanced?: string | null;
+  openrouter_model_ui?: string | null;
+}
+
+export interface UserAISettings {
+  hasApiKey: boolean;
+  apiKeyMasked: string | null;
+  usingOwnKey: boolean;
+  models: {
+    default: string;
+    advanced: string;
+    ui: string;
+  };
+  serverDefaults: {
+    default: string;
+    advanced: string;
+    ui: string;
+  };
+}
+
+export interface UpdateUserAISettingsPayload {
+  openrouterApiKey?: string;
+  clearApiKey?: boolean;
+  model?: string;
+  modelAdvanced?: string;
+  modelUi?: string;
+}
+
+export interface OpenRouterModelOption {
+  id: string;
+  name: string;
 }
 export interface Widget {
   id: string;

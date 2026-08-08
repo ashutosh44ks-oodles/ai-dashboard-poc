@@ -9,6 +9,7 @@ declare global {
       OPENROUTER_MODEL_UI?: string;
       PUBLIC_URL?: string;
       OPENROUTER_TLS_INSECURE?: string;
+      SETTINGS_ENCRYPTION_KEY?: string;
       DB_USER: string;
       DB_PASSWORD: string;
       DB_HOST: string;

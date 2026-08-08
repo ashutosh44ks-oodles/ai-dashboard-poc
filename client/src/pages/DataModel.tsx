@@ -1,6 +1,7 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import DataModelService from "@/services/dataModels";
+import settingsService from "@/services/settings";
 import InputWithAttachment from "@/components/InputWithAttachment";
 import { ChatWidgetPreview } from "@/components/chat-widget-preview";
 import type { ChatMessage } from "@/lib/types";
@@ -62,6 +63,12 @@ const DataModel = () => {
     return parts.map((part) => part.charAt(0).toUpperCase()).join("");
   };
 
+  const { data: settingsResponse } = useQuery({
+    queryKey: ["ai-settings"],
+    queryFn: settingsService.getAISettings,
+  });
+  const defaultModel = settingsResponse?.data?.models?.default;
+
   if (messages.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-full">
@@ -78,7 +85,7 @@ const DataModel = () => {
             includeSubmitButton
             loading={isPending}
             includeFileInput={false}
-            model="openrouter/free"
+            model={defaultModel}
           />
         </form>
       </div>
@@ -121,7 +128,7 @@ const DataModel = () => {
             includeSubmitButton
             loading={isPending}
             includeFileInput={false}
-            model="openrouter/free"
+            model={defaultModel}
           />
         </form>
       </div>
