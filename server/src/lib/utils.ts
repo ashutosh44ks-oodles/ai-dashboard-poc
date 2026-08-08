@@ -2,30 +2,6 @@ import { QueryResult, QueryResultRow } from "pg";
 import { query } from "../config/db.js";
 import xlsx from "xlsx";
 
-const createWidgetsTableIfNotExists = async (): Promise<void> => {
-  try {
-    await query(`
-      CREATE TABLE IF NOT EXISTS widgets (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER NOT NULL,
-        prompt TEXT NOT NULL,
-        content TEXT,
-        created_at TIMESTAMPTZ DEFAULT NOW(),
-        CONSTRAINT fk_user
-            FOREIGN KEY(user_id)
-                REFERENCES users(id)
-                ON DELETE CASCADE
-        );
-    `);
-  } catch (error) {
-    throw new Error(
-      `Failed to create widgets table: ${
-        error instanceof Error ? error.message : "Unknown error"
-      }`
-    );
-  }
-};
-
 const createUsersTableIfNotExists = async (): Promise<void> => {
   try {
     await query(`
@@ -45,10 +21,36 @@ const createUsersTableIfNotExists = async (): Promise<void> => {
   }
 };
 
+const createWidgetsTableIfNotExists = async (): Promise<void> => {
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS widgets (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL,
+        prompt TEXT NOT NULL,
+        sql_query TEXT,
+        content TEXT,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+        CONSTRAINT fk_user
+            FOREIGN KEY(user_id)
+                REFERENCES users(user_id)
+                ON DELETE CASCADE
+        );
+    `);
+  } catch (error) {
+    throw new Error(
+      `Failed to create widgets table: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`
+    );
+  }
+};
+
 export const initializeDatabase = async (): Promise<void> => {
   try {
-    await createWidgetsTableIfNotExists();
     await createUsersTableIfNotExists();
+    await createWidgetsTableIfNotExists();
   } catch (error) {
     console.error("Error initializing database:", error);
     throw error; // Re-throw to handle it in the calling context

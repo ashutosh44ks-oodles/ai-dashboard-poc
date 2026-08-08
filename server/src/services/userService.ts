@@ -13,7 +13,7 @@ export const getAllUsers = async (): Promise<User[]> => {
 
 export const getUserById = async (id: number): Promise<User | null> => {
   try {
-    const result = await query<User>("SELECT * FROM users WHERE id = $1", [id]);
+    const result = await query<User>("SELECT * FROM users WHERE user_id = $1", [id]);
     return multipleQueryHandler(result).rows[0] || null;
   } catch (error) {
     throw new Error(`Failed to fetch user: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -62,7 +62,7 @@ export const updateUser = async (id: number, name?: string, email?: string): Pro
 
     values.push(id);
     const result = await query<User>(
-      `UPDATE users SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING *`,
+      `UPDATE users SET ${updates.join(', ')} WHERE user_id = $${paramIndex} RETURNING *`,
       values
     );
     return multipleQueryHandler(result).rows[0] || null;
@@ -73,7 +73,7 @@ export const updateUser = async (id: number, name?: string, email?: string): Pro
 
 export const deleteUser = async (id: number): Promise<boolean> => {
   try {
-    const result = await query("DELETE FROM users WHERE id = $1", [id]);
+    const result = await query("DELETE FROM users WHERE user_id = $1", [id]);
     return multipleQueryHandler(result).rowCount !== null;
   } catch (error) {
     throw new Error(`Failed to delete user: ${error instanceof Error ? error.message : 'Unknown error'}`);

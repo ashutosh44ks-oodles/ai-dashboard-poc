@@ -25,18 +25,29 @@ import { multipleQueryHandler, removeJsonCodeBlock } from "../lib/utils.js";
 
 dotenv.config();
 
-const openaiClient = new OpenAI({
-  baseURL: process.env.OPENAI_BASE_URL,
-  apiKey: process.env.OPENAI_API_KEY,
+const OPENROUTER_BASE_URL =
+  process.env.OPENROUTER_BASE_URL ?? "https://openrouter.ai/api/v1";
+// ponytail: openrouter/free rotates free models; override via env for a fixed model
+const OPENROUTER_MODEL =
+  process.env.OPENROUTER_MODEL ?? "openrouter/free";
+const OPENROUTER_MODEL_ADVANCED =
+  process.env.OPENROUTER_MODEL_ADVANCED ?? "cohere/north-mini-code:free";
+
+const openRouterClient = new OpenAI({
+  baseURL: OPENROUTER_BASE_URL,
+  apiKey: process.env.OPENROUTER_API_KEY,
+  defaultHeaders: {
+    "HTTP-Referer": "http://localhost:3000",
+    "X-Title": "AI ERP Dashboard",
+  },
 });
 
 // Core methods
 export async function createChatCompletion(
   messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[]
 ) {
-  return await openaiClient.chat.completions.create({
-    // model: "gpt-4o-mini",
-    model: "gpt-4.1-nano",
+  return await openRouterClient.chat.completions.create({
+    model: OPENROUTER_MODEL,
     stream: false,
     messages,
   });
@@ -44,15 +55,14 @@ export async function createChatCompletion(
 export async function createChatCompletionAdvanced(
   messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[],
 ) {
-  return await openaiClient.chat.completions.create({
-    model: "gpt-4o",
-    // model: "gpt-4.1-nano",
+  return await openRouterClient.chat.completions.create({
+    model: OPENROUTER_MODEL_ADVANCED,
     stream: false,
     messages,
   });
 }
-export function getOpenAIClient(): OpenAI {
-  return openaiClient;
+export function getOpenRouterClient(): OpenAI {
+  return openRouterClient;
 }
 
 // Helper function to get SQL query for the prompt
@@ -95,7 +105,7 @@ export const getSQLQueryForPrompt = async (
   // });
   // return fakeResponseToSaveTokens as QueryForPrompt;
 
-  // create a client to interact with OpenAI
+  // create a chat completion via OpenRouter
   const llm = await createChatCompletion(messages);
 
   // If the response contains choices, extract the content
@@ -136,7 +146,7 @@ export const getSQLQueryForPromptWithoutRetry = async (
   // });
   // return fakeResponseToSaveTokens as QueryForPrompt;
 
-  // create a client to interact with OpenAI
+  // create a chat completion via OpenRouter
   const llm = await createChatCompletion(messages);
 
   // If the response contains choices, extract the content
@@ -169,7 +179,7 @@ export const getSQLQueryForPromptRecursively = async (
   });
   logger.info(`Messages for LLM: ${messages.length}`);
 
-  // create a client to interact with OpenAI
+  // create a chat completion via OpenRouter
   const llm = await createChatCompletionAdvanced(messages);
 
   // If the response contains choices, extract the content
@@ -340,7 +350,7 @@ export const summarizeChatTillNow = async (history: Message[]) => {
   messages.push(...history);
   logger.info(`Messages for LLM: ${messages.length}`);
 
-  // create a client to interact with OpenAI
+  // create a chat completion via OpenRouter
   const llm = await createChatCompletion(messages);
 
   // If the response contains choices, extract the content

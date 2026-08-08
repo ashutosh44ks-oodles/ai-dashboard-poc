@@ -26,7 +26,7 @@ root/
 ### Setup
 1. Clone the repository:
   ```bash
-  git clone <repo-url>
+  git clone https://github.com/ashutosh44ks/AI-powered-ERP-solution
   cd ai-dashboard
   ```
 2. Install dependencies for both client and server:
@@ -37,11 +37,13 @@ root/
 3. Set up environment variable files:
   - **Server:**
     - Use the data in `env.d.ts` to create a `.env` file in the `server/` directory.
-    - Connect your DB and update `DB_SCHEMA` in `./server/src/lib/constants.ts` with your actual database schema info.
+    - Connect your DB and update `DB_SCHEMA` in `./server/src/lib/constants.ts` with your actual database schema info (for now, we are using the sample database).
+  - **Sample database:**
+    - Follow [server/SAMPLE-DB-SETUP.md](./server/SAMPLE-DB-SETUP.md) to load the hotel booking schema and seed data into PostgreSQL.
   - **Client:**
     - Use the data in `vite-env.d.ts` to create a `.env` file in the `client/` directory.
-   
-  > **Note:** The server will not run correctly without the necessary environment variables set.
+
+  > **Note:** The server will not run correctly without the necessary environment variables set. The sample database is recommended for first run.
 
 ### Running the App
 - **Start both with a single command (from root):**
@@ -59,7 +61,7 @@ root/
   npm run dev
   ```
 
-The client will be available at `http://localhost:5173` (default Vite port), and the server at `http://localhost:3000` (default Express port).
+The client will be available at `http://localhost:5173` (default Vite port), and the server at `http://localhost:3001` (default Express port).
 
 ## Logging
 - All server logs are written to `server/logs/combined.log` and the console using Winston.
