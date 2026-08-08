@@ -19,8 +19,6 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@crayonai/stream": "^0.6.4",
-    "@google/generative-ai": "^0.24.1",
     "cors": "^2.8.5",
     "dotenv": "^17.2.0",
     "express": "^5.1.0",

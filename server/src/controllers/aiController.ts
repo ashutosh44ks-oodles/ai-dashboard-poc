@@ -1,7 +1,5 @@
 import { Request, Response } from "express";
-import { transformStream } from "@crayonai/stream";
-import { THESYS_SYSTEM_PROMPT } from "../lib/constants.js";
-import thesysService from "../services/thesysAIService.js";
+import { UI_GENERATION_SYSTEM_PROMPT } from "../lib/constants.js";
 import * as openaiService from "../services/openAIService.js";
 import * as widgetService from "../services/widgetService.js";
 import { ApiResponse, DataForPrompt, Message } from "../lib/types.js";
@@ -71,62 +69,61 @@ export const generateUI = async (
       return;
     }
 
-    // Combine the original prompt with the data retrieved from the database
-    const newPrompt = `${prompt} ${JSON.stringify(
-      hydratedPromptResponse.data
-    )}`;
+    const rows = hydratedPromptResponse.data;
+    if (!Array.isArray(rows) || rows.length === 0) {
+      await widgetService.deleteWidget(myWidget.id, USER_ID);
+      res.status(400).json({
+        success: false,
+        error: "Query returned no data to visualize",
+      });
+      return;
+    }
 
-    const messages: Message[] = [THESYS_SYSTEM_PROMPT];
+    const newPrompt = `User question: ${prompt}
+
+Query results (${rows.length} rows):
+${JSON.stringify(rows, null, 2)}`;
+
+    logger.info(`Generating UI for widget ${widgetId} with ${rows.length} rows`);
+
+    const messages: Message[] = [UI_GENERATION_SYSTEM_PROMPT];
     messages.push({
       role: "user",
       content: newPrompt,
     });
 
-    // Create a chat completion request with streaming enabled
-    const llmStream = await thesysService.createThesysChatCompletion(messages);
+    const llmStream = await openaiService.createStreamingChatCompletion(messages);
 
     // Serve the response as a Server-Sent Event (SSE)
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
 
-    // Transform the stream to extract the content from the response
-    const transformed = transformStream(llmStream, (chunk) => {
-      return chunk.choices[0]?.delta?.content || "";
-    });
-    const reader = transformed.getReader();
+    // Convert the stream to a string
     const encoder = new TextEncoder();
+    let fullContent = "";
 
-    // Function to push data to the response stream
-    const pushStream = async () => {
-      let fullContent = "";
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) {
-          break;
-        }
-        fullContent += value;
-        res.write(encoder.encode(value));
-      }
+    for await (const chunk of llmStream) {
+      const text = chunk.choices[0]?.delta?.content ?? "";
+      if (!text) continue;
+      fullContent += text;
+      res.write(encoder.encode(text));
+    }
 
-      // Update the widget with the final content
-      if (hydratedPromptResponse.updatedWidget) {
-        widgetService.updateWidget(
-          hydratedPromptResponse.updatedWidget.id,
-          hydratedPromptResponse.updatedWidget.sql_query,
-          fullContent,
-          USER_ID
-        );
-      } else if (!myWidget.sql_query) {
-        logger.warn(
-          "No updated widget found to save the content. This might be an issue."
-        );
-      }
+    if (hydratedPromptResponse.updatedWidget) {
+      widgetService.updateWidget(
+        hydratedPromptResponse.updatedWidget.id,
+        hydratedPromptResponse.updatedWidget.sql_query,
+        fullContent,
+        USER_ID
+      );
+    } else if (!myWidget.sql_query) {
+      logger.warn(
+        "No updated widget found to save the content. This might be an issue."
+      );
+    }
 
-      res.end();
-    };
-
-    await pushStream();
+    res.end();
   } catch (error) {
     logger.error(`Error in AI generation: ${error}`);
     res.status(500).json({

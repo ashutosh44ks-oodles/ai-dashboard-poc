@@ -1,4 +1,3 @@
-import { C1Component } from "@thesysai/genui-sdk";
 import {
   Card,
   CardContent,
@@ -13,6 +12,7 @@ import SkeletonWidget from "./SkeletonWidget";
 import { Button } from "./ui/button";
 import WidgetWrapper from "./WidgetWrapper";
 import WidgetControls from "./WidgetControls";
+import WidgetContent from "./WidgetContent";
 // import { experimental_streamedQuery, useQuery } from "@tanstack/react-query";
 // import widgetService from "@/services/widgets";
 
@@ -83,10 +83,9 @@ const Widget = ({
           />
         }
       >
-        {/* NOTE - C1Component doesn't re-render upon c1Response change */}
         <div className="min-h-138">
-          <C1Component
-            c1Response={c1Response}
+          <WidgetContent
+            response={c1Response}
             isStreaming={c1ResponseLoading}
           />
         </div>
@@ -97,14 +96,6 @@ const Widget = ({
   // the new content will NOT be streamed because
   // streamed content is loaded top to bottom (including the card)
   // and we want instant replacement of old content with new content
-  // if (c1ResponseLoading && content)
-  //   return (
-  //     <WidgetWrapper id={id} isExpand={isExpand} controls={null}>
-  //       <div className="min-h-138">
-  //         <C1Component c1Response={content} isStreaming={c1ResponseLoading} />
-  //       </div>
-  //     </WidgetWrapper>
-  //   );
   if (c1ResponseError) return null;
   return (
     <Card className="w-96 h-138">

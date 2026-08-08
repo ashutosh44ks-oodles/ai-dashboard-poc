@@ -25,6 +25,7 @@ import { multipleQueryHandler, removeJsonCodeBlock } from "../lib/utils.js";
 import {
   OPENROUTER_MODEL,
   OPENROUTER_MODEL_ADVANCED,
+  OPENROUTER_MODEL_UI,
   openRouterClient,
 } from "../config/openRouter.js";
 export async function createChatCompletion(
@@ -45,6 +46,18 @@ export async function createChatCompletionAdvanced(
     messages,
   });
 }
+
+export async function createStreamingChatCompletion(
+  messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[],
+) {
+  return await openRouterClient.chat.completions.create({
+    model: OPENROUTER_MODEL_UI,
+    stream: true,
+    temperature: 0.2,
+    messages,
+  });
+}
+
 export function getOpenRouterClient(): OpenAI {
   return openRouterClient;
 }

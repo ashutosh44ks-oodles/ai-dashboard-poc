@@ -55,17 +55,6 @@ export const SIDEBAR_STRUCTURE = {
   ],
 };
 
-export interface C1ResponseComponent {
-  component: string;
-  props: {
-    children: C1ResponseComponent[];
-    [key: string]: unknown;
-  };
-}
-export interface C1Response {
-  component: C1ResponseComponent;
-}
-
 export interface APIResponse<T> {
   success: true;
   data?: T;

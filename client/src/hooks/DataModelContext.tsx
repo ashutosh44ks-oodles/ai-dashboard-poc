@@ -1,7 +1,7 @@
-import type { Message } from "@thesysai/genui-sdk";
+import type { ChatMessage } from "@/lib/types";
 import { createContext } from "react";
 
-export type CustomMessage = Omit<Message, "id"> & { id?: string };
+export type CustomMessage = ChatMessage;
 
 export type DataModelContextType = {
   messages: CustomMessage[];

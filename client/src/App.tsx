@@ -6,8 +6,6 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-// import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
-import "@crayonai/react-ui/styles/index.css";
 import { AuthProvider } from "./hooks/AuthProvider";
 import { Toaster } from 'sonner';
 import DataModel from "./pages/DataModel";

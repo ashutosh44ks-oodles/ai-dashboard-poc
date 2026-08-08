@@ -11,6 +11,8 @@ export const OPENROUTER_MODEL =
   process.env.OPENROUTER_MODEL ?? "openrouter/free";
 export const OPENROUTER_MODEL_ADVANCED =
   process.env.OPENROUTER_MODEL_ADVANCED ?? "cohere/north-mini-code:free";
+export const OPENROUTER_MODEL_UI =
+  process.env.OPENROUTER_MODEL_UI ?? OPENROUTER_MODEL;
 
 function resolveOpenRouterSiteUrl(): string {
   const publicUrl = process.env.PUBLIC_URL?.trim();

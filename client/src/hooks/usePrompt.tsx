@@ -78,7 +78,7 @@ const usePrompt = ({ prompt, id }: UsePromptProps) => {
           }
         }
       } catch (error) {
-        console.error("Error fetching TheSys data:", error);
+        console.error("Error fetching widget data:", error);
         console.log({
           success: false,
           error: error,

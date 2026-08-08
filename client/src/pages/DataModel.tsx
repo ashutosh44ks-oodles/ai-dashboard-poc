@@ -2,7 +2,7 @@ import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import DataModelService from "@/services/dataModels";
 import InputWithAttachment from "@/components/InputWithAttachment";
-import type { Message } from "@thesysai/genui-sdk";
+import type { ChatMessage } from "@/lib/types";
 import { scrollToBottom } from "@/lib/utils";
 import { useDataModelConversation } from "@/hooks/useDataModelConversation";
 import { useRef } from "react";
@@ -19,7 +19,7 @@ const DataModel = () => {
   const formRef = useRef<HTMLFormElement>(null);
   const { mutate, isPending } = useMutation({
     mutationFn: DataModelService.saveRecordRecursively,
-    onSuccess: ({ data }: { data: Message[] }) => {
+    onSuccess: ({ data }: { data: ChatMessage[] }) => {
       console.log("Operation successful:", data);
       formRef.current?.reset();
       updateMessagesStack(data);

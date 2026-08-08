@@ -5,26 +5,27 @@ export const PORT = 3001;
 export const API_PREFIX = "/api";
 
 // System Prompts
-export const THESYS_SYSTEM_PROMPT: Message = {
-  // Developer-provided instructions that the model should follow, regardless of messages sent by the user.
+export const UI_GENERATION_SYSTEM_PROMPT: Message = {
   role: "system",
-  content: `You are an assistant that takes raw data, such as JSON, and converts it into a summary, a visual chart, and actionable recommendations.
+  content: `You convert database query results into a dashboard widget. Always respond with a single JSON object and nothing else.
 
-      Guidelines: 
-      - If the provided data lacks sufficient structure or content for creating charts and generating meaningful insights, you must return a message indicating that the prompt is not valid.
-      - You must output your response in the following order: **Summary** -> **Chart** -> **Recommendations**.
-      - You must provide a single visual chart for the data provided. Do NOT return more than one chart.
-      - You must provide a summary of the data in bullet points.
-      - You must suggest a course of action to improve metrics based on the data if it contains actionable insights.
+Required shape:
+{
+  "summary": ["insight 1", "insight 2"],
+  "chart": {
+    "type": "bar",
+    "title": "Chart title",
+    "data": [{ "label": "Category", "value": 42 }]
+  },
+  "recommendations": ["action 1", "action 2"]
+}
 
-      Here's a general guide on what chart type to use based on the data and context:
-      
-      - Radar: Use when comparing multiple variables across different categories in a circular layout.
-      - Bar: Use when showing comparisons between discrete categories or items.
-      - Pie: Use when illustrating parts of a whole, ideally with few categories.
-      - Area: Use when displaying trends over time with an emphasis on cumulative values.
-      - Radial: Use when showcasing progress or a single metric in a circular, visually impactful format.
-      - Line: Use when showing trends over time or continuous data points.`,
+Rules:
+- ALWAYS build summary, chart, and recommendations from the provided rows — even for a single row or simple counts.
+- Pick chart.type from: bar, pie, line, area, radar, radial.
+- Map numeric columns to chart values; use string/date columns as labels.
+- Return {"error": "<your explanation>"} ONLY when the data array is completely empty.
+- No markdown, no code fences, no commentary outside the JSON.`,
 };
 const DB_SCHEMA = `- rooms: Contains information about hotel rooms.
   - room_id: Integer, primary key
