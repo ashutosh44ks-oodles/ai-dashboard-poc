@@ -312,20 +312,68 @@ export const deleteTableRecord = async (
   return row;
 };
 
+export interface TableDataQueryOptions {
+  sortBy?: string;
+  sortDir?: "asc" | "desc";
+  search?: string;
+}
+
+const buildSearchClause = async (
+  tableName: string,
+  search: string
+): Promise<{ clause: string; params: string[] }> => {
+  const trimmed = search.trim();
+  if (!trimmed) return { clause: "", params: [] };
+
+  const config = await getTableConfig(tableName);
+  const columns = config.map((col) => col.column_name);
+  if (columns.length === 0) return { clause: "", params: [] };
+
+  const conditions = columns.map((col) => `"${col}"::text ILIKE $1`);
+  return {
+    clause: `WHERE (${conditions.join(" OR ")})`,
+    params: [`%${trimmed}%`],
+  };
+};
+
+const resolveSortColumn = async (
+  tableName: string,
+  sortBy?: string
+): Promise<string> => {
+  if (!sortBy) return getPrimaryKeyColumn(tableName);
+
+  const config = await getTableConfig(tableName);
+  const allowed = new Set(config.map((col) => col.column_name));
+  if (!allowed.has(sortBy)) {
+    throw new Error("Invalid sort column");
+  }
+  return sortBy;
+};
+
 export const getTableData = async (
   tableName: string,
-  page: number
+  page: number,
+  options: TableDataQueryOptions = {}
 ): Promise<any[]> => {
   try {
     const PAGE_SIZE = 10;
-    const pkColumn = await getPrimaryKeyColumn(tableName);
+    const sortColumn = await resolveSortColumn(tableName, options.sortBy);
+    const sortDir = options.sortDir === "desc" ? "DESC" : "ASC";
+    const { clause, params } = await buildSearchClause(
+      tableName,
+      options.search ?? ""
+    );
+
+    const limitParam = params.length + 1;
+    const offsetParam = params.length + 2;
 
     const result = await query(
       `SELECT *
       FROM ${tableName}
-      ORDER BY "${pkColumn}"
-      LIMIT $1 OFFSET $2`,
-      [PAGE_SIZE, page * PAGE_SIZE]
+      ${clause}
+      ORDER BY "${sortColumn}" ${sortDir}
+      LIMIT $${limitParam} OFFSET $${offsetParam}`,
+      [...params, PAGE_SIZE, page * PAGE_SIZE]
     );
     return multipleQueryHandler(result).rows;
   } catch (error) {
@@ -337,11 +385,17 @@ export const getTableData = async (
   }
 };
 
-export const getTableRowCount = async (tableName: string): Promise<number> => {
+export const getTableRowCount = async (
+  tableName: string,
+  search?: string
+): Promise<number> => {
   try {
+    const { clause, params } = await buildSearchClause(tableName, search ?? "");
     const result = await query(
       `SELECT COUNT(*) as count
-      FROM ${tableName}`
+      FROM ${tableName}
+      ${clause}`,
+      params
     );
     return multipleQueryHandler(result).rows[0].count;
   } catch (error) {

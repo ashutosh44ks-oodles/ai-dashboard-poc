@@ -1,13 +1,14 @@
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
+import { DataTableColumnHeader } from "@/components/ui/data-table-column-header";
 import { DataModelRecordSheet } from "@/components/data-model-record-sheet";
 import { DeleteRecordDialog } from "@/components/delete-record-dialog";
 import { formatBackendColumnDefToFrontend } from "@/lib/utils";
 import dataModels from "@/services/dataModels";
 import { IconAlertCircle, IconPencil, IconPlus, IconTrash } from "@tabler/icons-react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import type { ColumnDef } from "@tanstack/react-table";
+import type { ColumnDef, HeaderContext, SortingState } from "@tanstack/react-table";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router";
 
@@ -56,9 +57,30 @@ const TabularInteraction = () => {
       : null;
     if (!formatted?.data) return [];
 
+    const dataColumns: ColumnDef<unknown>[] = formatted.data.map((col) => {
+      const accessorKey =
+        "accessorKey" in col && typeof col.accessorKey === "string"
+          ? col.accessorKey
+          : "column";
+      const title =
+        typeof col.header === "string" ? col.header : accessorKey;
+
+      return {
+        accessorKey,
+        cell: col.cell,
+        enableSorting: true,
+        enableHiding: true,
+        header: ({ column }: HeaderContext<unknown, unknown>) => (
+          <DataTableColumnHeader column={column} title={title} />
+        ),
+      };
+    });
+
     const actionsColumn: ColumnDef<unknown> = {
       id: "actions",
       header: "Actions",
+      enableSorting: false,
+      enableHiding: false,
       cell: ({ row }) => (
         <div className="flex items-center gap-1">
           <Button
@@ -90,24 +112,48 @@ const TabularInteraction = () => {
       ),
     };
 
-    return [...formatted.data, actionsColumn];
+    return [...dataColumns, actionsColumn];
   }, [tableConfigRaw]);
 
   const [pagination, setPagination] = useState({
     pageIndex: 0,
     pageSize: 10,
   });
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [globalFilter, setGlobalFilter] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(globalFilter), 300);
+    return () => clearTimeout(timer);
+  }, [globalFilter]);
+
+  const sortBy = sorting[0]?.id;
+  const sortDir = sorting[0]?.desc ? "desc" : "asc";
 
   const { data: tableData } = useQuery({
-    queryKey: ["tableData", tableName, pagination.pageIndex],
-    queryFn: () => dataModels.getTableData(tableName, pagination.pageIndex),
+    queryKey: [
+      "tableData",
+      tableName,
+      pagination.pageIndex,
+      sortBy,
+      sortDir,
+      debouncedSearch,
+    ],
+    queryFn: () =>
+      dataModels.getTableData(tableName, {
+        page: pagination.pageIndex,
+        sortBy,
+        sortDir: sorting.length > 0 ? sortDir : undefined,
+        search: debouncedSearch || undefined,
+      }),
     enabled: !!tableName,
     placeholderData: keepPreviousData,
   });
 
   useEffect(() => {
     setPagination((prev) => ({ ...prev, pageIndex: 0 }));
-  }, [tableName]);
+  }, [tableName, debouncedSearch, sorting]);
 
   const openAddSheet = () => {
     setSheetMode("add");
@@ -147,6 +193,12 @@ const TabularInteraction = () => {
           pagination={pagination}
           setPagination={setPagination}
           rowCount={tableData.data?.totalElements}
+          sorting={sorting}
+          onSortingChange={setSorting}
+          globalFilter={globalFilter}
+          onGlobalFilterChange={setGlobalFilter}
+          searchPlaceholder={`Search ${tableLabel ?? "records"}...`}
+          manualSorting
         />
       )}
 

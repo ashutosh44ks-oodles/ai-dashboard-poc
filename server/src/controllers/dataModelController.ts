@@ -90,7 +90,17 @@ export const getTableData = async (
   try {
     const { tableName } = req.params;
     const page = req.query.page;
-    const pageNum = isNaN(Number(page)) ? 1 : Number(page);
+    const pageNum = isNaN(Number(page)) ? 0 : Number(page);
+    const sortBy =
+      typeof req.query.sortBy === "string" ? req.query.sortBy : undefined;
+    const sortDir: "asc" | "desc" | undefined =
+      req.query.sortDir === "desc"
+        ? "desc"
+        : req.query.sortDir === "asc"
+          ? "asc"
+          : undefined;
+    const search =
+      typeof req.query.search === "string" ? req.query.search : undefined;
     if (isForbiddenTable(tableName)) {
       res.status(403).json({
         success: false,
@@ -98,8 +108,9 @@ export const getTableData = async (
       });
       return;
     }
-    const p1 = dataModelService.getTableRowCount(tableName);
-    const p2 = dataModelService.getTableData(tableName, pageNum);
+    const queryOptions = { sortBy, sortDir, search };
+    const p1 = dataModelService.getTableRowCount(tableName, search);
+    const p2 = dataModelService.getTableData(tableName, pageNum, queryOptions);
     const result = Promise.all([p1, p2]);
     const [totalElements, tableData] = await result;
     const response: ApiResponsePageable = {

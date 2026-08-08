@@ -43,14 +43,24 @@ const getTableConfig = async (
   return response.data;
 };
 
+export interface TableDataQueryParams {
+  page?: number;
+  sortBy?: string;
+  sortDir?: "asc" | "desc";
+  search?: string;
+}
+
 const getTableData = async (
   tableName: string | undefined,
-  page?: number
+  params: TableDataQueryParams = {}
 ): Promise<ApiResponsePageable<unknown>> => {
   if (!tableName) throw new Error("Table name is required");
   const response = await api.get(`/data-models/${tableName}/data`, {
     params: {
-      page: page ?? 0,
+      page: params.page ?? 0,
+      sortBy: params.sortBy,
+      sortDir: params.sortDir,
+      search: params.search,
     },
   });
   return response.data;

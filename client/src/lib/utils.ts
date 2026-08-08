@@ -84,6 +84,9 @@ export const getInitialFormValue = (
   return raw;
 };
 
+export const keyToLabel = (key: string) =>
+  key.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
+
 export const formatBackendColumnDefToFrontend = (
   data: APIResponse<ColumnDef<unknown>[]>
 ): APIResponse<ColumnDef<unknown>[]> => {

@@ -1,10 +1,15 @@
 import {
   type ColumnDef,
+  type ColumnOrderState,
+  type OnChangeFn,
+  type SortingState,
+  type VisibilityState,
   flexRender,
   getCoreRowModel,
-  // getPaginationRowModel,
   useReactTable,
 } from "@tanstack/react-table";
+import { useState, type DragEvent } from "react";
+import { IconGripVertical } from "@tabler/icons-react";
 
 import {
   Table,
@@ -14,8 +19,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-
 import { Button } from "@/components/ui/button";
+import { DataTableToolbar } from "@/components/ui/data-table-toolbar";
+import { cn } from "@/lib/utils";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -28,6 +34,12 @@ interface DataTableProps<TData, TValue> {
     }>
   >;
   rowCount: number;
+  sorting?: SortingState;
+  onSortingChange?: OnChangeFn<SortingState>;
+  globalFilter?: string;
+  onGlobalFilterChange?: (value: string) => void;
+  searchPlaceholder?: string;
+  manualSorting?: boolean;
 }
 
 export function DataTable<TData, TValue>({
@@ -36,36 +48,118 @@ export function DataTable<TData, TValue>({
   pagination,
   setPagination,
   rowCount,
+  sorting = [],
+  onSortingChange,
+  globalFilter = "",
+  onGlobalFilterChange,
+  searchPlaceholder,
+  manualSorting = false,
 }: DataTableProps<TData, TValue>) {
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [columnOrder, setColumnOrder] = useState<ColumnOrderState>([]);
+  const [draggedColumnId, setDraggedColumnId] = useState<string | null>(null);
+
   const table = useReactTable({
     data,
     columns,
     getCoreRowModel: getCoreRowModel(),
-    // getPaginationRowModel: getPaginationRowModel(), // not needed for server-side pagination
-    manualPagination: true, // turn off client-side pagination
-    onPaginationChange: setPagination, // update the pagination state when internal APIs mutate the pagination state
+    manualPagination: true,
+    manualSorting,
+    onPaginationChange: setPagination,
+    onSortingChange,
+    onColumnVisibilityChange: setColumnVisibility,
+    onColumnOrderChange: setColumnOrder,
     rowCount,
     state: {
       pagination,
+      sorting,
+      columnVisibility,
+      columnOrder,
     },
   });
 
+  const handleDragStart = (
+    event: DragEvent<HTMLButtonElement>,
+    columnId: string
+  ) => {
+    setDraggedColumnId(columnId);
+    event.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleColumnDrop = (targetColumnId: string) => {
+    if (!draggedColumnId || draggedColumnId === targetColumnId) return;
+
+    const currentOrder =
+      columnOrder.length > 0
+        ? columnOrder
+        : table.getAllLeafColumns().map((col) => col.id);
+
+    const fromIndex = currentOrder.indexOf(draggedColumnId);
+    const toIndex = currentOrder.indexOf(targetColumnId);
+    if (fromIndex === -1 || toIndex === -1) return;
+
+    const nextOrder = [...currentOrder];
+    nextOrder.splice(fromIndex, 1);
+    nextOrder.splice(toIndex, 0, draggedColumnId);
+    setColumnOrder(nextOrder);
+    setDraggedColumnId(null);
+  };
+
   return (
     <div className="grid grid-cols-1">
+      <DataTableToolbar
+        table={table}
+        globalFilter={globalFilter}
+        onGlobalFilterChange={onGlobalFilterChange}
+        searchPlaceholder={searchPlaceholder}
+      />
       <div className="overflow-hidden rounded-md border">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
+                  const canDrag = header.column.id !== "actions";
+
                   return (
-                    <TableHead key={header.id}>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
+                    <TableHead
+                      key={header.id}
+                      onDragOver={(event) => {
+                        event.preventDefault();
+                        event.dataTransfer.dropEffect = "move";
+                      }}
+                      onDrop={() => handleColumnDrop(header.column.id)}
+                      className={cn(
+                        draggedColumnId === header.column.id && "opacity-50"
+                      )}
+                    >
+                      <div className="flex items-center gap-0.5">
+                        {canDrag && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="size-7 shrink-0 cursor-grab shadow-none active:cursor-grabbing"
+                            draggable
+                            onDragStart={(event) =>
+                              handleDragStart(event, header.column.id)
+                            }
+                            onDragEnd={() => setDraggedColumnId(null)}
+                            aria-label="Drag to reorder"
+                          >
+                            <IconGripVertical
+                              className="size-4 opacity-60"
+                              aria-hidden="true"
+                            />
+                          </Button>
+                        )}
+                        {header.isPlaceholder
+                          ? null
+                          : flexRender(
+                              header.column.columnDef.header,
+                              header.getContext()
+                            )}
+                      </div>
                     </TableHead>
                   );
                 })}
