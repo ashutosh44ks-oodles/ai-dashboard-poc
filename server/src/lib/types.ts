@@ -57,8 +57,16 @@ export interface DataForPrompt {
 
 export type ForbiddenWordsDictionary = { word: string; weight: number }[];
 
+export type AuditRole = "created" | "updated" | null;
+
 export interface TableConfigBasic {
   column_name: string;
   data_type: string;
   is_nullable: string;
+  column_default?: string | null;
+  is_identity?: string;
+  is_primary_key?: boolean;
+  is_auto_generated?: boolean;
+  audit_role?: AuditRole;
+  is_auto_managed?: boolean;
 }

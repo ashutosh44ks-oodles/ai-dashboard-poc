@@ -1,7 +1,7 @@
 import type { CustomMessage } from "@/hooks/DataModelContext";
 import api from "@/lib/api";
 import type { APIResponse, ApiResponsePageable } from "@/lib/constants";
-import type { ColumnDef } from "@tanstack/react-table";
+import type { TableColumnConfig } from "@/lib/utils";
 
 const saveRecord = async (formData: FormData) => {
   const response = await api.post(`/ai/save-record`, formData, {
@@ -37,11 +37,12 @@ const getDBTables = async (): Promise<
 
 const getTableConfig = async (
   tableName: string | undefined
-): Promise<APIResponse<ColumnDef<unknown>[]>> => {
+): Promise<APIResponse<TableColumnConfig[]>> => {
   if (!tableName) throw new Error("Table name is required");
   const response = await api.get(`/data-models/${tableName}/config`);
   return response.data;
 };
+
 const getTableData = async (
   tableName: string | undefined,
   page?: number
@@ -55,10 +56,43 @@ const getTableData = async (
   return response.data;
 };
 
+const createRecord = async (
+  tableName: string,
+  data: Record<string, unknown>
+): Promise<APIResponse<Record<string, unknown>>> => {
+  const response = await api.post(`/data-models/${tableName}/records`, data);
+  return response.data;
+};
+
+const updateRecord = async (
+  tableName: string,
+  recordId: string,
+  data: Record<string, unknown>
+): Promise<APIResponse<Record<string, unknown>>> => {
+  const response = await api.put(
+    `/data-models/${tableName}/records/${recordId}`,
+    data
+  );
+  return response.data;
+};
+
+const deleteRecord = async (
+  tableName: string,
+  recordId: string
+): Promise<APIResponse<Record<string, unknown>>> => {
+  const response = await api.delete(
+    `/data-models/${tableName}/records/${recordId}`
+  );
+  return response.data;
+};
+
 export default {
   saveRecord,
   saveRecordRecursively,
   getDBTables,
   getTableConfig,
   getTableData,
+  createRecord,
+  updateRecord,
+  deleteRecord,
 };

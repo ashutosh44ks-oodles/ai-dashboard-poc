@@ -74,7 +74,7 @@ const DataModel = () => {
             includeSubmitButton
             loading={isPending}
             includeFileInput={false}
-            model="gpt-4o"
+            model="openrouter/free"
           />
         </form>
       </div>
@@ -107,7 +107,7 @@ const DataModel = () => {
             includeSubmitButton
             loading={isPending}
             includeFileInput={false}
-            model="gpt-4o"
+            model="openrouter/free"
           />
         </form>
       </div>

@@ -3,17 +3,18 @@ import {
   getListOfTables,
   getTableConfig,
   getTableData,
+  createRecord,
+  updateRecord,
+  deleteRecord,
 } from "../controllers/dataModelController.js";
 
 const router = Router();
 
-// GET /api/data-models
 router.get("/", getListOfTables);
-
-// GET /api/data-models/:tableName/config
 router.get("/:tableName/config", getTableConfig);
-
-// GET /api/data-models/:tableName/data
 router.get("/:tableName/data", getTableData);
+router.post("/:tableName/records", createRecord);
+router.put("/:tableName/records/:recordId", updateRecord);
+router.delete("/:tableName/records/:recordId", deleteRecord);
 
 export default router;
