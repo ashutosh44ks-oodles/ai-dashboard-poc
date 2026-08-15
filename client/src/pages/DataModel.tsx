@@ -85,6 +85,7 @@ const DataModel = () => {
             includeSubmitButton
             loading={isPending}
             includeFileInput={false}
+            submitOnEnter
             model={defaultModel}
           />
         </form>
@@ -128,6 +129,7 @@ const DataModel = () => {
             includeSubmitButton
             loading={isPending}
             includeFileInput={false}
+            submitOnEnter
             model={defaultModel}
           />
         </form>

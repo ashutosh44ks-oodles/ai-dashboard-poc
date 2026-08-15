@@ -12,6 +12,8 @@ interface InputWithAttachmentProps {
   includeSubmitButton: boolean;
   // only required if includeSubmitButton is true
   loading?: boolean;
+  /** Enter submits the parent form; Shift+Enter inserts a newline */
+  submitOnEnter?: boolean;
   // decoratives
   model?: string;
 }
@@ -22,6 +24,7 @@ const InputWithAttachment = ({
   includeFileInput = true,
   includeSubmitButton = true,
   loading = false,
+  submitOnEnter = false,
   model,
 }: InputWithAttachmentProps) => {
   const [fileName, setFileName] = useState<string>("");
@@ -50,12 +53,22 @@ const InputWithAttachment = ({
     inputFileRef.current.click();
   };
 
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    textAreaProps?.onKeyDown?.(event);
+    if (!submitOnEnter || event.defaultPrevented || loading) return;
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      event.currentTarget.form?.requestSubmit();
+    }
+  };
+
   return (
     <div className="w-full border-input rounded-md border bg-transparent px-3 py-1 text-base shadow-xs dark:bg-input/30">
       <Textarea
         className="w-full border-none focus-visible:border-none focus-visible:ring-0 px-0 py-2 dark:bg-transparent max-h-24 resize-none field-sizing-content min-h-10"
         placeholder="Type your prompt here..."
         {...textAreaProps}
+        onKeyDown={handleKeyDown}
         name="prompt-input-with-attachment"
         required
       />
@@ -101,7 +114,11 @@ const InputWithAttachment = ({
         {includeSubmitButton && (
           <Tooltip>
             <TooltipTrigger asChild>
-              <button className="rounded-full hover:bg-accent p-2 shrink-0 cursor-pointer">
+              <button
+                type="submit"
+                className="rounded-full hover:bg-accent p-2 shrink-0 cursor-pointer"
+                disabled={loading}
+              >
                 {loading ? (
                   <IconLoader2 className="animate-spin" />
                 ) : (
