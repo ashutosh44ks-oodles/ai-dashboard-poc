@@ -69,7 +69,7 @@ const Widget = ({
   };
   const isExpand = expandedWidgetId === id;
   if (expandedWidgetId !== null && !isExpand) return null;
-  if (c1Response)
+  if (c1Response || c1ResponseLoading) {
     return (
       <WidgetWrapper
         id={id}
@@ -91,11 +91,7 @@ const Widget = ({
         </div>
       </WidgetWrapper>
     );
-  // We can work on this later to handle the loading state better.
-  // Basically we can show last content while loading new content
-  // the new content will NOT be streamed because
-  // streamed content is loaded top to bottom (including the card)
-  // and we want instant replacement of old content with new content
+  }
   if (c1ResponseError) return null;
   return (
     <Card className="w-96 h-138">

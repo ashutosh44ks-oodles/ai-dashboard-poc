@@ -6,6 +6,7 @@ import type { User } from "@/hooks/AuthContext";
 import widgetService from "@/services/widgets";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { readStreamedText } from "@/lib/readStreamedText";
 
 interface ChatWidgetPreviewProps {
   prompt: string;
@@ -59,18 +60,11 @@ export function ChatWidgetPreview({
           throw new Error(err.error || response.statusText);
         }
 
-        const decoder = new TextDecoder();
-        const stream = response.body?.getReader();
-        if (!stream) throw new Error("No response stream");
+        if (!response.body) throw new Error("No response stream");
 
-        let streamResponse = "";
-        while (true) {
-          const { done, value } = await stream.read();
-          const chunk = decoder.decode(value, { stream: !done });
-          streamResponse += chunk;
-          if (!cancelled) setContent(streamResponse);
-          if (done) break;
-        }
+        await readStreamedText(response.body, (text) => {
+          if (!cancelled) setContent(text);
+        });
       } catch (e) {
         if (!cancelled) {
           setError(e instanceof Error ? e.message : "Failed to load widget");

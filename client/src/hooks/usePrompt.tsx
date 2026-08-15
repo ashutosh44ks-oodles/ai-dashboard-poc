@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { User } from "./AuthContext";
 import type { Widget } from "@/lib/constants";
 import { toast } from "sonner";
+import { readStreamedText } from "@/lib/readStreamedText";
 
 interface UsePromptProps {
   prompt: Widget["prompt"];
@@ -48,35 +49,11 @@ const usePrompt = ({ prompt, id }: UsePromptProps) => {
           throw new Error(errorResponse.error || response.statusText);
         }
 
-        // Set up stream reading utilities
-        const decoder = new TextDecoder();
-        const stream = response.body?.getReader();
-
-        if (!stream) {
+        if (!response.body) {
           throw new Error("response.body not found");
         }
-        // Initialize accumulator for streamed response
-        let streamResponse = "";
-        // Read the stream chunk by chunk
-        while (true) {
-          const { done, value } = await stream.read();
-          // Decode the chunk, considering if it's the final chunk
-          const chunk = decoder.decode(value, { stream: !done });
-          // Accumulate response and update state
-          streamResponse += chunk;
-          setData(streamResponse);
-          // Break the loop when stream is complete
-          if (done) {
-            // copy the response to clipboard for debugging
-            console.log({
-              success: true,
-              data: streamResponse,
-              prompt: prompt,
-            });
-            // navigator.clipboard.writeText(streamResponse);
-            break;
-          }
-        }
+
+        await readStreamedText(response.body, setData);
       } catch (error) {
         console.error("Error fetching widget data:", error);
         console.log({
